@@ -17,6 +17,23 @@
 
         <main>
             <section class="input-section">
+                <!-- Molecule Name Search -->
+                <div class="input-group">
+                    <label for="name-input">🔍 Search by Name</label>
+                    <div class="input-wrapper">
+                        <input 
+                            type="text" 
+                            id="name-input" 
+                            placeholder="Enter molecule name (e.g., aspirin, caffeine)"
+                            autocomplete="off"
+                            spellcheck="false"
+                        >
+                        <button id="search-btn" class="btn-primary">Search</button>
+                    </div>
+                    <p id="search-status" class="search-status"></p>
+                </div>
+
+                <!-- SMILES Input -->
                 <div class="input-group">
                     <label for="smiles-input">SMILES Notation</label>
                     <div class="input-wrapper">

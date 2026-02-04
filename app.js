@@ -8,6 +8,9 @@
     let svgDrawer = null;
 
     // DOM Elements
+    const nameInput = document.getElementById('name-input');
+    const searchBtn = document.getElementById('search-btn');
+    const searchStatus = document.getElementById('search-status');
     const smilesInput = document.getElementById('smiles-input');
     const renderBtn = document.getElementById('render-btn');
     const svgElement = document.getElementById('molecule-svg');
@@ -29,7 +32,6 @@
 
     function init() {
         console.log('[ChemSketch] init() called');
-        console.log('[ChemSketch] svgElement:', svgElement);
         
         if (typeof SmilesDrawer === 'undefined') {
             showError('SmilesDrawer library not loaded');
@@ -39,25 +41,34 @@
         // Initialize SVG drawer
         try {
             svgDrawer = new SmilesDrawer.SvgDrawer(options);
-            console.log('[ChemSketch] svgDrawer created:', svgDrawer);
+            console.log('[ChemSketch] svgDrawer created');
         } catch (e) {
             showError('Failed to initialize drawer: ' + e.message);
             return;
         }
 
-        // Setup event listeners
+        // Setup event listeners - Name Search
+        searchBtn.addEventListener('click', () => searchMolecule(nameInput.value));
+        nameInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') searchMolecule(nameInput.value);
+        });
+
+        // Setup event listeners - SMILES Render
         renderBtn.addEventListener('click', () => render(smilesInput.value));
         smilesInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') render(smilesInput.value);
         });
 
+        // Molecule buttons
         moleculeButtons.forEach(btn => {
             btn.addEventListener('click', () => {
                 smilesInput.value = btn.dataset.smiles;
+                nameInput.value = btn.dataset.name;
                 render(btn.dataset.smiles, btn.dataset.name);
             });
         });
 
+        // Export buttons
         downloadPngBtn.addEventListener('click', downloadPNG);
         downloadSvgBtn.addEventListener('click', downloadSVG);
         copySvgBtn.addEventListener('click', copySVG);
@@ -66,6 +77,66 @@
 
         // Load from URL or render default
         loadFromURL();
+    }
+
+    // Search molecule by name using PubChem API
+    async function searchMolecule(name) {
+        if (!name || !name.trim()) {
+            showSearchStatus('Please enter a molecule name', 'error');
+            return;
+        }
+
+        const cleanName = name.trim();
+        showSearchStatus('Searching...', 'loading');
+
+        try {
+            // PubChem API endpoint for name to SMILES
+            const url = `https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/${encodeURIComponent(cleanName)}/property/CanonicalSMILES/JSON`;
+            
+            console.log('[ChemSketch] Searching PubChem for:', cleanName);
+            const response = await fetch(url);
+            console.log('[ChemSketch] PubChem response status:', response.status);
+            
+            if (!response.ok) {
+                if (response.status === 404) {
+                    showSearchStatus(`"${cleanName}" not found in PubChem`, 'error');
+                } else {
+                    showSearchStatus(`Search failed (${response.status})`, 'error');
+                }
+                return;
+            }
+
+            const data = await response.json();
+            console.log('[ChemSketch] PubChem data:', data);
+            
+            if (data && data.PropertyTable && data.PropertyTable.Properties && data.PropertyTable.Properties[0]) {
+                const props = data.PropertyTable.Properties[0];
+                // PubChem may return different SMILES property names
+                const smiles = props.CanonicalSMILES || props.IsomericSMILES || props.ConnectivitySMILES;
+                
+                if (smiles) {
+                    // Update inputs
+                    smilesInput.value = smiles;
+                    const displaySmiles = smiles.length > 40 ? smiles.substring(0, 40) + '...' : smiles;
+                    showSearchStatus(`Found! SMILES: ${displaySmiles}`, 'success');
+                    
+                    // Auto-render
+                    render(smiles, cleanName);
+                } else {
+                    showSearchStatus(`"${cleanName}" found but no SMILES data`, 'error');
+                }
+            } else {
+                showSearchStatus(`"${cleanName}" not found`, 'error');
+            }
+        } catch (e) {
+            console.error('[ChemSketch] Search error:', e);
+            showSearchStatus('Network error: ' + e.message, 'error');
+        }
+    }
+
+    function showSearchStatus(msg, type) {
+        searchStatus.textContent = msg;
+        searchStatus.className = 'search-status ' + type;
     }
 
     function render(smiles, name = '') {
@@ -77,12 +148,10 @@
         }
 
         if (!svgDrawer) {
-            console.log('[ChemSketch] svgDrawer is null/undefined!');
             showError('Drawer not initialized');
             return;
         }
 
-        console.log('[ChemSketch] svgDrawer exists, proceeding');
         errorMsg.textContent = '';
         currentSmiles = smiles.trim();
         currentName = name;
@@ -91,9 +160,7 @@
         svgElement.innerHTML = '';
 
         // Parse and draw
-        console.log('[ChemSketch] calling SmilesDrawer.parse...');
         SmilesDrawer.parse(currentSmiles, function(tree) {
-            console.log('[ChemSketch] parse success, tree:', tree);
             try {
                 svgDrawer.draw(tree, svgElement, 'light');
                 moleculeName.textContent = name || currentSmiles.substring(0, 30);
@@ -200,6 +267,7 @@
         const smiles = params.get('smiles') || 'c1ccccc1';
         const name = params.get('name') || (smiles === 'c1ccccc1' ? 'Benzene' : '');
         smilesInput.value = smiles;
+        if (name) nameInput.value = name;
         render(smiles, name);
     }
 
