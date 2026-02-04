@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChemSketch — Molecular Structure Renderer</title>
+    <meta name="description" content="Draw chemical structures from SMILES notation. Free online tool for students and scientists.">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚗️</text></svg>">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚗️ ChemSketch</h1>
+            <p class="subtitle">SMILES → Molecular Structure</p>
+        </header>
+
+        <main>
+            <section class="input-section">
+                <div class="input-group">
+                    <label for="smiles-input">SMILES Notation</label>
+                    <div class="input-wrapper">
+                        <input 
+                            type="text" 
+                            id="smiles-input" 
+                            placeholder="Enter SMILES (e.g., c1ccccc1 for benzene)"
+                            autocomplete="off"
+                            spellcheck="false"
+                        >
+                        <button id="render-btn" class="btn-primary">Render</button>
+                    </div>
+                    <p id="error-msg" class="error-msg"></p>
+                </div>
+
+                <div class="molecules-library">
+                    <h3>Common Molecules</h3>
+                    <div class="molecule-buttons">
+                        <button data-smiles="O" data-name="Water">💧 Water</button>
+                        <button data-smiles="C" data-name="Methane">🔥 Methane</button>
+                        <button data-smiles="N" data-name="Ammonia">💨 Ammonia</button>
+                        <button data-smiles="CCO" data-name="Ethanol">🍺 Ethanol</button>
+                        <button data-smiles="c1ccccc1" data-name="Benzene">⬡ Benzene</button>
+                        <button data-smiles="CC(=O)O" data-name="Acetic Acid">🧪 Acetic Acid</button>
+                        <button data-smiles="OC[C@H]1OC(O)[C@H](O)[C@@H](O)[C@@H]1O" data-name="Glucose">🍬 Glucose</button>
+                        <button data-smiles="CN1C=NC2=C1C(=O)N(C(=O)N2C)C" data-name="Caffeine">☕ Caffeine</button>
+                        <button data-smiles="CC(=O)Oc1ccccc1C(=O)O" data-name="Aspirin">💊 Aspirin</button>
+                        <button data-smiles="CC(C)Cc1ccc(cc1)C(C)C(=O)O" data-name="Ibuprofen">💊 Ibuprofen</button>
+                        <button data-smiles="c1ccc2c(c1)cc1ccc3cccc4ccc2c1c34" data-name="Pyrene">🔬 Pyrene</button>
+                        <button data-smiles="CC12CCC3C(C1CCC2O)CCC4=CC(=O)CCC34C" data-name="Testosterone">💪 Testosterone</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="render-section">
+                <div class="canvas-container">
+                    <canvas id="molecule-canvas" width="500" height="500"></canvas>
+                    <p id="molecule-name" class="molecule-name"></p>
+                </div>
+
+                <div class="export-buttons">
+                    <button id="download-png" class="btn-export" disabled>
+                        <span class="icon">📥</span> Download PNG
+                    </button>
+                    <button id="download-svg" class="btn-export" disabled>
+                        <span class="icon">📥</span> Download SVG
+                    </button>
+                    <button id="copy-svg" class="btn-export" disabled>
+                        <span class="icon">📋</span> Copy SVG
+                    </button>
+                    <button id="copy-embed" class="btn-export" disabled>
+                        <span class="icon">📋</span> Copy Embed
+                    </button>
+                    <button id="copy-url" class="btn-export" disabled>
+                        <span class="icon">🔗</span> Copy URL
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Built by <a href="https://dprrwt.me" target="_blank">dprrwt</a> • 
+            <a href="https://github.com/dprrwt/chemsketch" target="_blank">GitHub</a></p>
+            <p class="hint">Powered by <a href="https://github.com/reymond-group/smilesDrawer" target="_blank">SmilesDrawer</a></p>
+        </footer>
+    </div>
+
+    <!-- SmilesDrawer from CDN -->
+    <script src="https://unpkg.com/smiles-drawer@2.1.7/dist/smiles-drawer.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
