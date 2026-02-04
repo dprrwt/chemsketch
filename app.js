@@ -76,7 +76,8 @@
         currentName = name;
 
         try {
-            drawer.draw(currentSmiles, canvas, 'light', () => {
+            // SmilesDrawer expects a selector string, not the element
+            drawer.draw(currentSmiles, '#molecule-canvas', 'light', () => {
                 // Success callback
                 moleculeName.textContent = name || formatSmiles(currentSmiles);
                 enableExportButtons();
