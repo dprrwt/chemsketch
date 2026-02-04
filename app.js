@@ -85,18 +85,29 @@
 
         // Parse SMILES
         SmilesDrawer.parse(currentSmiles, function(tree) {
+            // Check if tree is valid
+            if (!tree) {
+                showError('Unable to parse molecule structure');
+                disableExportButtons();
+                return;
+            }
+
             // Clear canvas
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw to canvas
-            smilesDrawer.draw(tree, canvas, 'light', false);
-
-            moleculeName.textContent = name || currentSmiles.substring(0, 30);
-            enableExportButtons();
-            updateURL();
+            // Draw to canvas with error handling
+            try {
+                smilesDrawer.draw(tree, canvas, 'light', false);
+                moleculeName.textContent = name || currentSmiles.substring(0, 30);
+                enableExportButtons();
+                updateURL();
+            } catch (drawErr) {
+                showError('Error rendering molecule: ' + drawErr.message);
+                disableExportButtons();
+            }
         }, function(err) {
             showError('Invalid SMILES: ' + err);
             disableExportButtons();
