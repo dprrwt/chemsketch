@@ -1,10 +1,12 @@
 // ChemSketch — Main Application
+// Using SmilesDrawer.apply() for simpler, more reliable rendering
 (function() {
     'use strict';
 
     let currentSmiles = '';
     let currentName = '';
 
+    // DOM Elements
     const smilesInput = document.getElementById('smiles-input');
     const renderBtn = document.getElementById('render-btn');
     const canvas = document.getElementById('molecule-canvas');
@@ -18,26 +20,11 @@
     const copyEmbedBtn = document.getElementById('copy-embed');
     const copyUrlBtn = document.getElementById('copy-url');
 
-    // Create drawer with options (simplified for stability)
-    const drawerOptions = {
+    // Drawer options
+    const options = {
         width: 500,
-        height: 500,
-        bondThickness: 1.0,
-        bondLength: 15,
-        shortBondLength: 0.85,
-        bondSpacing: 0.18 * 15,
-        atomVisualization: 'default',
-        isomeric: true,
-        debug: false,
-        terminalCarbons: true,
-        explicitHydrogens: true,
-        compactDrawing: true,
-        fontSizeLarge: 6,
-        fontSizeSmall: 4,
-        padding: 20.0,
+        height: 500
     };
-
-    let smilesDrawer = null;
 
     function init() {
         if (typeof SmilesDrawer === 'undefined') {
@@ -45,10 +32,7 @@
             return;
         }
 
-        // Initialize drawer
-        smilesDrawer = new SmilesDrawer.Drawer(drawerOptions);
-
-        // Setup events
+        // Setup event listeners
         renderBtn.addEventListener('click', () => render(smilesInput.value));
         smilesInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') render(smilesInput.value);
@@ -81,35 +65,27 @@
         currentSmiles = smiles.trim();
         currentName = name;
 
-        // Parse SMILES
-        SmilesDrawer.parse(currentSmiles, function(tree) {
-            // Check if tree is valid
-            if (!tree) {
-                showError('Unable to parse molecule structure');
-                disableExportButtons();
-                return;
-            }
+        // Clear canvas first
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Clear canvas
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Draw to canvas with error handling (use ID string as per SmilesDrawer docs)
-            try {
-                smilesDrawer.draw(tree, 'molecule-canvas', 'light', false);
-                moleculeName.textContent = name || currentSmiles.substring(0, 30);
-                enableExportButtons();
-                updateURL();
-            } catch (drawErr) {
-                showError('Error rendering molecule: ' + drawErr.message);
-                disableExportButtons();
-            }
-        }, function(err) {
-            showError('Invalid SMILES: ' + err);
+        // Set data-smiles attribute and use SmilesDrawer.apply()
+        canvas.setAttribute('data-smiles', currentSmiles);
+        
+        try {
+            // SmilesDrawer.apply() scans for elements with data-smiles and renders them
+            SmilesDrawer.apply(options, 'molecule-canvas', 'light');
+            
+            moleculeName.textContent = name || currentSmiles.substring(0, 30);
+            enableExportButtons();
+            updateURL();
+        } catch (e) {
+            console.error('Render error:', e);
+            showError('Error: ' + e.message);
             disableExportButtons();
-        });
+        }
     }
 
     function showError(msg) {
@@ -171,7 +147,6 @@
     }
 
     async function copyEmbed() {
-        const url = `https://dprrwt.github.io/chemsketch/?smiles=${encodeURIComponent(currentSmiles)}`;
         const embed = `<img src="${canvas.toDataURL('image/png')}" alt="${currentName || currentSmiles}">`;
         await navigator.clipboard.writeText(embed);
         showToast('Embed copied!');
@@ -193,6 +168,10 @@
         render(smiles, name);
     }
 
-    // Start
-    window.addEventListener('load', init);
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();
