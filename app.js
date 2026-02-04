@@ -18,11 +18,11 @@
     const copyEmbedBtn = document.getElementById('copy-embed');
     const copyUrlBtn = document.getElementById('copy-url');
 
-    // Create drawer with options
+    // Create drawer with options (simplified for stability)
     const drawerOptions = {
         width: 500,
         height: 500,
-        bondThickness: 1,
+        bondThickness: 1.0,
         bondLength: 15,
         shortBondLength: 0.85,
         bondSpacing: 0.18 * 15,
@@ -31,8 +31,6 @@
         debug: false,
         terminalCarbons: true,
         explicitHydrogens: true,
-        overlapSensitivity: 0.42,
-        overlapResolutionIterations: 1,
         compactDrawing: true,
         fontSizeLarge: 6,
         fontSizeSmall: 4,
@@ -98,9 +96,9 @@
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw to canvas with error handling
+            // Draw to canvas with error handling (use ID string as per SmilesDrawer docs)
             try {
-                smilesDrawer.draw(tree, canvas, 'light', false);
+                smilesDrawer.draw(tree, 'molecule-canvas', 'light', false);
                 moleculeName.textContent = name || currentSmiles.substring(0, 30);
                 enableExportButtons();
                 updateURL();
