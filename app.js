@@ -1,11 +1,11 @@
 // ChemSketch — Main Application
+// Using SmilesDrawer.apply() which is the simplest API
 (function() {
     'use strict';
 
     // State
     let currentSmiles = '';
     let currentName = '';
-    let smilesDrawer = null;
 
     // DOM Elements
     const smilesInput = document.getElementById('smiles-input');
@@ -22,12 +22,17 @@
     const copyEmbedBtn = document.getElementById('copy-embed');
     const copyUrlBtn = document.getElementById('copy-url');
 
-    // Initialize SmilesDrawer with minimal options
+    // Global drawer instance
+    let drawer = null;
+
+    // Initialize drawer
     function initDrawer() {
-        smilesDrawer = new SmilesDrawer.Drawer({
+        const options = {
             width: 500,
-            height: 500
-        });
+            height: 500,
+            padding: 30
+        };
+        drawer = new SmilesDrawer.SvgDrawer(options);
     }
 
     // Render molecule from SMILES
@@ -41,29 +46,51 @@
         currentSmiles = smiles.trim();
         currentName = name;
 
-        // Clear canvas first
+        // Clear canvas
         const ctx = canvas.getContext('2d');
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        try {
-            // Parse and draw using the correct API
-            SmilesDrawer.parse(currentSmiles, function(tree) {
-                // Draw to canvas
-                smilesDrawer.draw(tree, canvas, 'light', false);
+        // Use SmilesDrawer.parse with the drawer
+        SmilesDrawer.parse(currentSmiles, function(tree) {
+            // Success - draw to canvas
+            try {
+                // Create a temporary SVG container
+                const tempDiv = document.createElement('div');
+                tempDiv.style.position = 'absolute';
+                tempDiv.style.left = '-9999px';
+                document.body.appendChild(tempDiv);
                 
-                // Update UI
-                moleculeName.textContent = name || formatSmiles(currentSmiles);
-                enableExportButtons();
-                updateURL();
-            }, function(err) {
-                showError('Invalid SMILES: ' + err);
+                // Draw to SVG first
+                drawer.draw(tree, tempDiv, 'light');
+                
+                // Convert SVG to canvas
+                const svg = tempDiv.querySelector('svg');
+                if (svg) {
+                    const svgData = new XMLSerializer().serializeToString(svg);
+                    const img = new Image();
+                    img.onload = function() {
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img, 0, 0);
+                        
+                        moleculeName.textContent = name || formatSmiles(currentSmiles);
+                        enableExportButtons();
+                        updateURL();
+                    };
+                    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+                }
+                
+                // Clean up
+                document.body.removeChild(tempDiv);
+            } catch (e) {
+                showError('Render error: ' + e.message);
                 disableExportButtons();
-            });
-        } catch (e) {
-            showError('Error: ' + e.message);
+            }
+        }, function(err) {
+            showError('Invalid SMILES: ' + err);
             disableExportButtons();
-        }
+        });
     }
 
     // Format SMILES for display
@@ -209,6 +236,7 @@
             renderMolecule(smiles, name || '');
         } else {
             // Render default benzene
+            smilesInput.value = 'c1ccccc1';
             renderMolecule('c1ccccc1', 'Benzene');
         }
     }
@@ -242,15 +270,20 @@
     // Initialize when ready
     function init() {
         if (typeof SmilesDrawer === 'undefined') {
-            console.error('SmilesDrawer library not loaded');
             showError('Library loading failed. Please refresh.');
             return;
         }
         
         initDrawer();
-        loadFromURL();
+        
+        // Small delay to ensure everything is ready
+        setTimeout(loadFromURL, 100);
     }
 
     // Wait for everything to load
-    window.addEventListener('load', init);
+    if (document.readyState === 'complete') {
+        init();
+    } else {
+        window.addEventListener('load', init);
+    }
 })();
