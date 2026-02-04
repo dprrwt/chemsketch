@@ -5,7 +5,7 @@
     // State
     let currentSmiles = '';
     let currentName = '';
-    let drawer = null;
+    let smilesDrawer = null;
 
     // DOM Elements
     const smilesInput = document.getElementById('smiles-input');
@@ -35,7 +35,7 @@
             isomeric: true,
             debug: false,
             terminalCarbons: false,
-            explicitHydrogens: true,
+            explicitHydrogens: false,
             overlapSensitivity: 0.42,
             overlapResolutionIterations: 1,
             compactDrawing: true,
@@ -43,25 +43,25 @@
             fontSizeSmall: 8,
             padding: 20,
             themes: {
-                light: {
-                    C: '#222222',
-                    O: '#e74c3c',
-                    N: '#3498db',
-                    F: '#27ae60',
-                    Cl: '#27ae60',
-                    Br: '#e67e22',
-                    I: '#9b59b6',
-                    P: '#e67e22',
-                    S: '#f1c40f',
-                    B: '#e91e63',
-                    Si: '#9c27b0',
-                    H: '#666666',
+                dark: {
+                    C: '#e0e0e0',
+                    O: '#ff6b6b',
+                    N: '#4dabf7',
+                    F: '#51cf66',
+                    Cl: '#51cf66',
+                    Br: '#fd7e14',
+                    I: '#be4bdb',
+                    P: '#fd7e14',
+                    S: '#fcc419',
+                    B: '#f06595',
+                    Si: '#9c36b5',
+                    H: '#aaaaaa',
                     BACKGROUND: '#ffffff'
                 }
             }
         };
 
-        drawer = new SmilesDrawer.SmiDrawer(options);
+        smilesDrawer = new SmilesDrawer.Drawer(options);
     }
 
     // Render molecule from SMILES
@@ -75,22 +75,21 @@
         currentSmiles = smiles.trim();
         currentName = name;
 
-        try {
-            // SmilesDrawer expects a selector string, not the element
-            drawer.draw(currentSmiles, '#molecule-canvas', 'light', () => {
-                // Success callback
-                moleculeName.textContent = name || formatSmiles(currentSmiles);
-                enableExportButtons();
-                updateURL();
-            }, (error) => {
-                // Error callback
-                showError(`Invalid SMILES: ${error}`);
-                disableExportButtons();
-            });
-        } catch (e) {
-            showError(`Error: ${e.message}`);
+        // Clear canvas first
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Parse and draw
+        SmilesDrawer.parse(currentSmiles, function(tree) {
+            smilesDrawer.draw(tree, canvas, 'dark', false);
+            moleculeName.textContent = name || formatSmiles(currentSmiles);
+            enableExportButtons();
+            updateURL();
+        }, function(err) {
+            showError('Invalid SMILES: ' + err);
             disableExportButtons();
-        }
+        });
     }
 
     // Format SMILES for display
@@ -163,7 +162,6 @@
 
     // Generate SVG from canvas
     function generateSVG() {
-        const ctx = canvas.getContext('2d');
         const imageData = canvas.toDataURL('image/png');
         
         return `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}">
@@ -273,14 +271,14 @@
         if (!window.location.search.includes('smiles')) {
             setTimeout(() => {
                 renderMolecule('c1ccccc1', 'Benzene');
-            }, 100);
+            }, 200);
         }
     }
 
-    // Wait for SmilesDrawer to load
-    if (typeof SmilesDrawer !== 'undefined') {
-        init();
+    // Wait for DOM and SmilesDrawer to load
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
     } else {
-        window.addEventListener('load', init);
+        init();
     }
 })();
