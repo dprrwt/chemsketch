@@ -1,15 +1,16 @@
 // ChemSketch — Main Application
-// Using SmilesDrawer.apply() for simpler, more reliable rendering
+// Using SvgDrawer for reliable SVG rendering
 (function() {
     'use strict';
 
     let currentSmiles = '';
     let currentName = '';
+    let svgDrawer = null;
 
     // DOM Elements
     const smilesInput = document.getElementById('smiles-input');
     const renderBtn = document.getElementById('render-btn');
-    const canvas = document.getElementById('molecule-canvas');
+    const svgElement = document.getElementById('molecule-svg');
     const moleculeName = document.getElementById('molecule-name');
     const errorMsg = document.getElementById('error-msg');
     const moleculeButtons = document.querySelectorAll('.molecule-buttons button');
@@ -29,6 +30,14 @@
     function init() {
         if (typeof SmilesDrawer === 'undefined') {
             showError('SmilesDrawer library not loaded');
+            return;
+        }
+
+        // Initialize SVG drawer
+        try {
+            svgDrawer = new SmilesDrawer.SvgDrawer(options);
+        } catch (e) {
+            showError('Failed to initialize drawer: ' + e.message);
             return;
         }
 
@@ -61,31 +70,35 @@
             return;
         }
 
+        if (!svgDrawer) {
+            showError('Drawer not initialized');
+            return;
+        }
+
         errorMsg.textContent = '';
         currentSmiles = smiles.trim();
         currentName = name;
 
-        // Clear canvas first
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Clear SVG
+        svgElement.innerHTML = '';
 
-        // Set data-smiles attribute and use SmilesDrawer.apply()
-        canvas.setAttribute('data-smiles', currentSmiles);
-        
-        try {
-            // SmilesDrawer.apply() scans for elements with data-smiles and renders them
-            SmilesDrawer.apply(options, 'molecule-canvas', 'light');
-            
-            moleculeName.textContent = name || currentSmiles.substring(0, 30);
-            enableExportButtons();
-            updateURL();
-        } catch (e) {
-            console.error('Render error:', e);
-            showError('Error: ' + e.message);
+        // Parse and draw
+        SmilesDrawer.parse(currentSmiles, function(tree) {
+            try {
+                svgDrawer.draw(tree, svgElement, 'light');
+                moleculeName.textContent = name || currentSmiles.substring(0, 30);
+                enableExportButtons();
+                updateURL();
+            } catch (e) {
+                console.error('Draw error:', e);
+                showError('Error rendering: ' + e.message);
+                disableExportButtons();
+            }
+        }, function(err) {
+            console.error('Parse error:', err);
+            showError('Invalid SMILES: ' + (err.message || err));
             disableExportButtons();
-        }
+        });
     }
 
     function showError(msg) {
@@ -118,19 +131,33 @@
         window.history.replaceState({}, '', url);
     }
 
+    function svgToDataURL() {
+        const svgData = new XMLSerializer().serializeToString(svgElement);
+        return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)));
+    }
+
     function downloadPNG() {
-        const link = document.createElement('a');
-        link.download = (currentName || 'molecule') + '.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-        showToast('PNG downloaded!');
+        const canvas = document.createElement('canvas');
+        canvas.width = 500;
+        canvas.height = 500;
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        img.onload = function() {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, 500, 500);
+            ctx.drawImage(img, 0, 0);
+            const link = document.createElement('a');
+            link.download = (currentName || 'molecule') + '.png';
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            showToast('PNG downloaded!');
+        };
+        img.src = svgToDataURL();
     }
 
     function downloadSVG() {
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}">
-<image href="${canvas.toDataURL('image/png')}" width="${canvas.width}" height="${canvas.height}"/>
-</svg>`;
-        const blob = new Blob([svg], { type: 'image/svg+xml' });
+        const svgData = new XMLSerializer().serializeToString(svgElement);
+        const blob = new Blob([svgData], { type: 'image/svg+xml' });
         const link = document.createElement('a');
         link.download = (currentName || 'molecule') + '.svg';
         link.href = URL.createObjectURL(blob);
@@ -139,17 +166,15 @@
     }
 
     async function copySVG() {
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${canvas.width}" height="${canvas.height}">
-<image href="${canvas.toDataURL('image/png')}" width="${canvas.width}" height="${canvas.height}"/>
-</svg>`;
-        await navigator.clipboard.writeText(svg);
+        const svgData = new XMLSerializer().serializeToString(svgElement);
+        await navigator.clipboard.writeText(svgData);
         showToast('SVG copied!');
     }
 
     async function copyEmbed() {
-        const embed = `<img src="${canvas.toDataURL('image/png')}" alt="${currentName || currentSmiles}">`;
-        await navigator.clipboard.writeText(embed);
-        showToast('Embed copied!');
+        const svgData = new XMLSerializer().serializeToString(svgElement);
+        await navigator.clipboard.writeText(svgData);
+        showToast('SVG embed copied!');
     }
 
     async function copyURL() {
