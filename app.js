@@ -22,51 +22,17 @@
     const copyEmbedBtn = document.getElementById('copy-embed');
     const copyUrlBtn = document.getElementById('copy-url');
 
-    // Initialize SmilesDrawer
+    // Initialize SmilesDrawer with minimal options
     function initDrawer() {
-        const options = {
+        smilesDrawer = new SmilesDrawer.Drawer({
             width: 500,
-            height: 500,
-            bondThickness: 1.5,
-            bondLength: 25,
-            shortBondLength: 0.85,
-            bondSpacing: 4,
-            atomVisualization: 'default',
-            isomeric: true,
-            debug: false,
-            terminalCarbons: false,
-            explicitHydrogens: false,
-            overlapSensitivity: 0.42,
-            overlapResolutionIterations: 1,
-            compactDrawing: true,
-            fontSizeLarge: 11,
-            fontSizeSmall: 8,
-            padding: 20,
-            themes: {
-                dark: {
-                    C: '#e0e0e0',
-                    O: '#ff6b6b',
-                    N: '#4dabf7',
-                    F: '#51cf66',
-                    Cl: '#51cf66',
-                    Br: '#fd7e14',
-                    I: '#be4bdb',
-                    P: '#fd7e14',
-                    S: '#fcc419',
-                    B: '#f06595',
-                    Si: '#9c36b5',
-                    H: '#aaaaaa',
-                    BACKGROUND: '#ffffff'
-                }
-            }
-        };
-
-        smilesDrawer = new SmilesDrawer.Drawer(options);
+            height: 500
+        });
     }
 
     // Render molecule from SMILES
     function renderMolecule(smiles, name = '') {
-        if (!smiles.trim()) {
+        if (!smiles || !smiles.trim()) {
             showError('Please enter a SMILES string');
             return;
         }
@@ -80,16 +46,24 @@
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Parse and draw
-        SmilesDrawer.parse(currentSmiles, function(tree) {
-            smilesDrawer.draw(tree, canvas, 'dark', false);
-            moleculeName.textContent = name || formatSmiles(currentSmiles);
-            enableExportButtons();
-            updateURL();
-        }, function(err) {
-            showError('Invalid SMILES: ' + err);
+        try {
+            // Parse and draw using the correct API
+            SmilesDrawer.parse(currentSmiles, function(tree) {
+                // Draw to canvas
+                smilesDrawer.draw(tree, canvas, 'light', false);
+                
+                // Update UI
+                moleculeName.textContent = name || formatSmiles(currentSmiles);
+                enableExportButtons();
+                updateURL();
+            }, function(err) {
+                showError('Invalid SMILES: ' + err);
+                disableExportButtons();
+            });
+        } catch (e) {
+            showError('Error: ' + e.message);
             disableExportButtons();
-        });
+        }
     }
 
     // Format SMILES for display
@@ -232,7 +206,10 @@
 
         if (smiles) {
             smilesInput.value = smiles;
-            setTimeout(() => renderMolecule(smiles, name || ''), 100);
+            renderMolecule(smiles, name || '');
+        } else {
+            // Render default benzene
+            renderMolecule('c1ccccc1', 'Benzene');
         }
     }
 
@@ -262,23 +239,18 @@
     copyEmbedBtn.addEventListener('click', copyEmbed);
     copyUrlBtn.addEventListener('click', copyURL);
 
-    // Initialize
+    // Initialize when ready
     function init() {
+        if (typeof SmilesDrawer === 'undefined') {
+            console.error('SmilesDrawer library not loaded');
+            showError('Library loading failed. Please refresh.');
+            return;
+        }
+        
         initDrawer();
         loadFromURL();
-
-        // Render default molecule if no URL params
-        if (!window.location.search.includes('smiles')) {
-            setTimeout(() => {
-                renderMolecule('c1ccccc1', 'Benzene');
-            }, 200);
-        }
     }
 
-    // Wait for DOM and SmilesDrawer to load
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
-    } else {
-        init();
-    }
+    // Wait for everything to load
+    window.addEventListener('load', init);
 })();
