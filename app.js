@@ -28,6 +28,9 @@
     };
 
     function init() {
+        console.log('[ChemSketch] init() called');
+        console.log('[ChemSketch] svgElement:', svgElement);
+        
         if (typeof SmilesDrawer === 'undefined') {
             showError('SmilesDrawer library not loaded');
             return;
@@ -36,6 +39,7 @@
         // Initialize SVG drawer
         try {
             svgDrawer = new SmilesDrawer.SvgDrawer(options);
+            console.log('[ChemSketch] svgDrawer created:', svgDrawer);
         } catch (e) {
             showError('Failed to initialize drawer: ' + e.message);
             return;
@@ -65,16 +69,20 @@
     }
 
     function render(smiles, name = '') {
+        console.log('[ChemSketch] render() called with:', smiles, name);
+        
         if (!smiles || !smiles.trim()) {
             showError('Please enter a SMILES string');
             return;
         }
 
         if (!svgDrawer) {
+            console.log('[ChemSketch] svgDrawer is null/undefined!');
             showError('Drawer not initialized');
             return;
         }
 
+        console.log('[ChemSketch] svgDrawer exists, proceeding');
         errorMsg.textContent = '';
         currentSmiles = smiles.trim();
         currentName = name;
@@ -83,7 +91,9 @@
         svgElement.innerHTML = '';
 
         // Parse and draw
+        console.log('[ChemSketch] calling SmilesDrawer.parse...');
         SmilesDrawer.parse(currentSmiles, function(tree) {
+            console.log('[ChemSketch] parse success, tree:', tree);
             try {
                 svgDrawer.draw(tree, svgElement, 'light');
                 moleculeName.textContent = name || currentSmiles.substring(0, 30);
