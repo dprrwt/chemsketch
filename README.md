@@ -6,8 +6,6 @@ A free online tool for rendering chemical structures from SMILES notation. Perfe
 
 🔗 **Live Demo:** [https://dprrwt.github.io/chemsketch](https://dprrwt.github.io/chemsketch)
 
-![ChemSketch Screenshot](screenshot.png)
-
 ## Features
 
 ### 🧪 SMILES Input
